@@ -13,7 +13,7 @@
 {$mode ObjFPC}{$H+}
 
 interface uses
-  Classes, SysUtils, LResources, Controls, Math;
+  Classes, SysUtils, LResources, Controls, Math, Graphics;
 
 type
 
@@ -36,17 +36,18 @@ type
     FTabIndex: Integer;
     FOnSelect: TNotifyEvent;
     procedure AttachObserver;
-    function CalculateTextCoords(ACaption: String): TPoint;
+    //function CalculateTextCoords(ACaption: String): TPoint;
     function RoundToNearest(Value: Double): Integer;
     procedure SelectALowerTab;
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
+    function ShortenCaptionToFit(ARect: TRect; ACaption: String): String;
     function TabIsEnabled(Index: Integer): Boolean;
     procedure PaintBackground;
-    procedure PaintCaption(ACaption: String; x, y: Integer;
+    procedure PaintCaption(ACaption: String; x: Integer;
       TabEnabled: Boolean=True);
     procedure PaintHighlight(x: Integer);
-    procedure PaintSeparator(AIndex, x, y: Integer);
+    procedure PaintSeparator(AIndex, x: Integer);
     procedure PaintTabs;
   protected
     procedure Paint; override;
@@ -110,7 +111,7 @@ var
   FActiveText: Integer = $333333;
 
 implementation uses
-  Types, TextStrings, LazUtilities, TypInfo, DBugIntF;
+  Types, TextStrings, LazUtilities, LazUTF8, TypInfo, DBugIntF;
 
 { TTsObserver }
 
@@ -183,38 +184,48 @@ procedure TTabBar.PaintTabs;
 var
   f,iX: Integer;
   x: Double;
-  ptTextOffset:TPoint;
   sTabCaption: String;
   bTabEnabled: Boolean;
 begin
   if TabCount<1 then Exit;
-  FTabWidth:=Max((Width/TabCount),48);
+  FTabWidth:=Max((Width/TabCount),32);
   x:=0;
   for f:=0 to TabCount-1 do begin
     iX:=RoundToNearest(x);
     sTabCaption:=FTabData[f].Caption;
     bTabEnabled:=FTabData[f].Enabled;
-    ptTextOffset:=CalculateTextCoords(sTabCaption);
     if f=TabIndex then PaintHighlight(iX)
-                  else PaintSeparator(f,iX,ptTextOffset.Y);
-    PaintCaption(sTabCaption,iX+ptTextOffset.X,ptTextOffset.Y,bTabEnabled);
+                  else PaintSeparator(f,iX);
+    PaintCaption(sTabCaption,iX,bTabEnabled);
     x:=x+FTabWidth;
     Canvas.Brush.Color:=FBarBackground;
     end;
   end;
 
-function TTabBar.CalculateTextCoords(ACaption: String): TPoint;
+{function TTabBar.CalculateTextCoords(ACaption: String): TPoint;
 var
   tx: TSize;
 begin
   tx:=Canvas.TextExtent(ACaption);
   Result.X:=(Trunc(FTabWidth)-tx.Width) div 2;
   Result.Y:=(Height-tx.Height) div 2;
-  end;
+  end;}
 
 function TTabBar.RoundToNearest(Value: Double): Integer;
 begin
   if Value.Frac<5 then Result:=Trunc(Value) else Result:=Trunc(Value)+1;
+  end;
+
+function TTabBar.ShortenCaptionToFit(ARect: TRect; ACaption: String): String;
+var
+  iFitCount: Integer;
+begin
+  if UTF8Length(ACaption)>1 then begin
+    iFitCount:=Canvas.TextFitInfo(ACaption,ARect.Width);
+    if iFitCount<UTF8Length(ACaption)
+      then ACaption:=ACaption.Remove(iFitCount-2)+'…';
+    end;
+  Result:=ACaption;
   end;
 
 procedure TTabBar.PaintHighlight(x: Integer);
@@ -228,19 +239,37 @@ begin
   Canvas.RoundRect(Rect(x,0,iRight,Height),5,5);
   end;
 
-procedure TTabBar.PaintSeparator(AIndex,x,y: Integer);
+procedure TTabBar.PaintSeparator(AIndex,x: Integer);
+var
+  sSeparator: String;
+  th,y: Integer;
 begin
   if (AIndex<1) or (AIndex=TabIndex+1) then Exit;
+  sSeparator:='|';
+  th:=Canvas.TextHeight(sSeparator);
+  y:=(Height-th) div 2;
   Canvas.Font.Color:=FBarBorder;
-  Canvas.TextOut(x-1,y-1,'|');
+  Canvas.TextOut(x-1,y-1,sSeparator);
   end;
 
-procedure TTabBar.PaintCaption(ACaption: String; x,y: Integer;
+procedure TTabBar.PaintCaption(ACaption: String; x: Integer;
   TabEnabled: Boolean=True);
+var
+  rtTab: TRect;
+  ttStyle: TTextStyle;
+  iTabPadding: Integer;
 begin
   if (Enabled) and (TabEnabled) then Canvas.Font.Color:=FActiveText
                                 else Canvas.Font.Color:=FInactiveText;
-  Canvas.TextOut(x,y,ACaption);
+  iTabPadding:=5;
+  rtTab:=Rect(x+iTabPadding,0,x+Trunc(FTabWidth)-iTabPadding,Height);
+  ACaption:=ShortenCaptionToFit(rtTab,ACaption);
+  ttStyle.Alignment:=TAlignment.taCenter;
+  ttStyle.Layout:=TTextLayout.tlCenter;
+  ttStyle.Clipping:=True;
+  ttStyle.Opaque:=False;
+  ttStyle.SingleLine:=True;
+  Canvas.TextRect(rtTab,0,0,ACaption,ttStyle);
   end;
 
 procedure TTabBar.Paint;
