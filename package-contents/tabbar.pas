@@ -143,7 +143,7 @@ begin
 constructor TTabBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Width:=50;
+  Width:=250;
   Height:=25;
   FTabWidth:=60;
   FTabs:=TTextStrings.Create;
