@@ -354,11 +354,12 @@ begin
 procedure TTabBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X,
   Y: Integer);
 var
-  i: Integer;
+  i,tw: Integer;
 begin
   inherited MouseDown(Button,Shift,X,Y);
   if TabCount>0 then begin
-    i:=X div (Width div TabCount);
+    tw:=Max(Width div TabCount,32)+1;
+    i:=X div tw;
     if (i>-1) and (i<TabCount) and (FTabData[i].Enabled) then TabIndex:=i;
     end;
   end;
