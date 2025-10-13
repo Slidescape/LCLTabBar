@@ -331,7 +331,8 @@ begin
   SetTabIndex(i);
   end;
 
-{ Set the display style of the TabBar control, e.g. tbsRounded. }
+{ Setter for Style property. Sets the display style of the TabBar control,
+  e.g. tbsRounded. }
 procedure TTabBar.SetStyle(AValue: TTabBarStyle);
 begin
   if FStyle=AValue then Exit;
@@ -339,7 +340,8 @@ begin
   Invalidate;
   end;
 
-{ Assign new tab captions - called by the IDE Form Designer Strings editor. }
+{ Setter for Tabs property. Assigns new tab captions. Called by the IDE Form
+  Designer Strings editor. }
 procedure TTabBar.SetTabCaptions(const AValue: TStrings);
 begin
   if (AValue <> nil) then begin
@@ -357,13 +359,13 @@ begin
   if Index<0 then Result:=False else Result:=FTabData[Index].Enabled;
   end;
 
-{ Returns True if the current tab is Enabled. }
+{ Getter for TabEnabled property. Returns True if the current tab is Enabled. }
 function TTabBar.GetTabEnabled: Boolean;
 begin
   Result:=TabIsEnabled(TabIndex);
   end;
 
-{ Sets the Enabled state of the current tab. }
+{ Setter for TabEnabled property. Sets the Enabled state of the current tab. }
 procedure TTabBar.SetTabEnabled(AValue: Boolean);
 begin
   SetTabEnabled(TabIndex,AValue);
@@ -377,10 +379,11 @@ begin
   Invalidate;
   end;
 
-{ Select the specified tab, making it the current highlighted tab. If the
-  specified tab index is too high, the highest tab is selected. Specify -1 to
-  have no tab selected. Note that unlike clicking on a tab, this method can
-  be called to force select a tab that is not currently Enabled. }
+{ Setter for TabIndex property. Selects the specified tab, making it the current
+  highlighted tab. If the specified tab index is too high, the end tab is
+  selected. Specify -1 to have no tab selected. Note that unlike clicking on a
+  tab, this method can be called to force select a tab that is not currently
+  Enabled. }
 procedure TTabBar.SetTabIndex(Value: Integer);
 begin
   if FTabIndex<>Value then begin
