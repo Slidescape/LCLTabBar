@@ -13,9 +13,13 @@
 {$mode ObjFPC}{$H+}
 
 interface uses
-  Classes, SysUtils, LResources, Controls, Math, Graphics;
+  Classes, SysUtils, LResources, Controls, Math, Graphics, ImgList;
 
 type
+
+  { TTabBarDisplay}
+
+  TTabBarDisplay=(tbdCaption,tbdCaptionAndIcon,tbdIcon);
 
   { TTabBarStyle }
 
@@ -31,10 +35,31 @@ type
     end;
   TTabArray = array of TTabData;
 
+  { TPainting / TTabPainting - Temp info while control / tab is being painted. }
+
+  TPainting = record
+    DisplayMode: TTabBarDisplay;
+    TabMinWidth: Integer;
+    em: Integer;
+    ScaleFactorMacOS: Double;
+    ScalingForMSWindows: Double;
+    PPIWindows: Integer;
+    end;
+
+  TTabPainting = record
+    Index: Integer;
+    Caption: String;
+    Enabled: Boolean;
+    ContentArea: TRect;
+    IconWidth, IconHeight, IconX, IconY: Integer;
+    end;
+
   { TTabBar - The TabBar control itself. }
 
   TTabBar = class(TCustomControl)
   private
+    FDisplay: TTabBarDisplay;
+    FImageWidth: Integer;
     FStyle: TTabBarStyle;
     FTabs: TStrings;
     FTabCount: Integer;
@@ -43,20 +68,32 @@ type
     FTabMinWidth: Integer;
     FTabCurve: Integer;
     FTabData: TTabArray;
+    FPainting: TPainting;
+    FTabPainting: TTabPainting;
+    FImages: TCustomImageList;
     FOnSelect: TNotifyEvent;
     procedure AttachObserver;
+    procedure CalcIconPosition;
+    procedure CalcScaling;
+    procedure CalcTabArea(ALeft: Integer);
+    procedure DrawScaledIcon(IconIndex: Integer);
+    procedure PaintIcon;
     function RoundToNearest(Value: Double): Integer;
     procedure PaintBackground;
-    procedure PaintCaption(ACaption: String; x: Integer;
-      TabEnabled: Boolean=True);
-    procedure PaintHighlight(x: Integer);
-    procedure PaintSeparator(AIndex, x: Integer);
+    procedure PaintCaption;
+    procedure PaintHighlight;
+    procedure PaintSeparator;
     procedure PaintTabs;
+    procedure SanitiseDisplayMode;
     procedure SelectALowerTab;
+    procedure SetDisplay(AValue: TTabBarDisplay);
+    procedure SetImages(AValue: TCustomImageList);
+    procedure SetImageWidth(AValue: Integer);
     procedure SetStyle(AValue: TTabBarStyle);
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
-    function ShortenCaptionToFit(ARect: TRect; ACaption: String): String;
+    procedure ShiftCaptionPosition;
+    procedure ShortenCaptionToFit(AWidth: Integer);
     function TabIsEnabled(Index: Integer): Boolean;
   protected
     procedure Paint; override;
@@ -72,17 +109,18 @@ type
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
+    property Display: TTabBarDisplay read FDisplay write SetDisplay;
+    property ImageWidth: Integer read FImageWidth write SetImageWidth;
     property Style: TTabBarStyle read FStyle write SetStyle;
     property Tabs: TStrings read FTabs write SetTabCaptions;
     property TabIndex: Integer read FTabIndex write SetTabIndex;
+    property Images: TCustomImageList read FImages write SetImages;
     property Align;
     property Anchors;
     property BiDiMode;
     property BorderSpacing;
     property Enabled;
     property Font;
-    //property Images;
-    //property ImagesWidth;
     property Constraints;
     property ShowHint;
     property ParentBiDiMode;
@@ -116,14 +154,15 @@ type
 procedure Register;
 
 var
-  FBarBackground: Integer = $DDDDDD;
-  FBarBorder: Integer = $CCCCCC;
+  FBarBackground: Integer = $EAEAEA;
+  FBarBorder: Integer = $D5D5D5;
   FTabHighlight: Integer = $FFFFFF;
-  FInactiveText: Integer = $BBBBBB;
+  FInactiveText: Integer = $AAAAAA;
   FActiveText: Integer = $333333;
 
 implementation uses
-  Types, TextStrings, LazUtilities, LazUTF8, TypInfo, DBugIntF;
+  Types, TextStrings, LazUtilities, LazUTF8, GraphType, Forms, TypInfo,
+  DBugIntF;
 
 { TTsObserver }
 
@@ -160,6 +199,8 @@ begin
   FTabWidth:=60;
   FTabMinWidth:=32;
   FTabCurve:=5;
+  FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
+  FImageWidth:=24;
   FTabs:=TTextStrings.Create;
   AttachObserver;
   //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
@@ -209,36 +250,40 @@ begin
 
 procedure TTabBar.PaintTabs;
 var
-  f,iX: Integer;
+  f: Integer;
   x: Double;
-  sTabCaption: String;
-  bTabEnabled: Boolean;
 begin
   if TabCount<1 then Exit;
-  FTabWidth:=Max((Width/TabCount),FTabMinWidth);
+  CalcScaling;
+  FTabWidth:=Max((Width/TabCount),FPainting.TabMinWidth);
   x:=0;
   for f:=0 to TabCount-1 do begin
-    iX:=RoundToNearest(x);
-    sTabCaption:=FTabData[f].Caption;
-    bTabEnabled:=FTabData[f].Enabled;
-    if f=TabIndex then PaintHighlight(iX)
-                  else PaintSeparator(f,iX);
-    PaintCaption(sTabCaption,iX,bTabEnabled);
+    FTabPainting.Index:=f;
+    FTabPainting.Caption:=FTabData[f].Caption;
+    FTabPainting.Enabled:=FTabData[f].Enabled;
+    FPainting.em:=Canvas.TextWidth('m');
+    SanitiseDisplayMode;
+    CalcTabArea(RoundToNearest(x));
+    if f=TabIndex then PaintHighlight else PaintSeparator;
+    FTabPainting.ContentArea.Inflate(-6,-4);
+    if FPainting.DisplayMode>TTabBarDisplay.tbdCaption then PaintIcon;
+    if FPainting.DisplayMode<TTabBarDisplay.tbdIcon then PaintCaption;
     x:=x+FTabWidth;
     Canvas.Brush.Color:=FBarBackground;
     end;
   end;
 
 { For the currently selected tab, we paint a highlight rectangle. }
-procedure TTabBar.PaintHighlight(x: Integer);
+procedure TTabBar.PaintHighlight;
 var
-  iRight: Integer;
+  iLeft, iRight: Integer;
 begin
   Canvas.Brush.Color:=FTabHighlight;
   Canvas.Pen.Color:=FBarBorder;
-  iRight:=x+RoundToNearest(FTabWidth)-1;
+  iLeft:=FTabPainting.ContentArea.Left;
+  iRight:=FTabPainting.ContentArea.Right;
   if iRight>Width then iRight:=Width;
-  Canvas.RoundRect(Rect(x,0,iRight,Height),FTabCurve,FTabCurve);
+  Canvas.RoundRect(Rect(iLeft,0,iRight,Height),FTabCurve,FTabCurve);
   end;
 
 { Round to nearest integer - we don't want bankers rounding. }
@@ -248,53 +293,158 @@ begin
   end;
 
 { Paint a separator between unselected tabs only. }
-procedure TTabBar.PaintSeparator(AIndex,x: Integer);
+procedure TTabBar.PaintSeparator;
 var
   sSeparator: String;
-  th,y: Integer;
+  th,y, iIndex: Integer;
 begin
-  if (AIndex<1) or (AIndex=TabIndex+1) then Exit;
+  iIndex:=FTabPainting.Index;
+  if (iIndex<1) or (iIndex=TabIndex+1) then Exit;
   sSeparator:='|';
   th:=Canvas.TextHeight(sSeparator);
   y:=(Height-th) div 2;
   Canvas.Font.Color:=FBarBorder;
-  Canvas.TextOut(x-1,y-1,sSeparator);
+  Canvas.TextOut(FTabPainting.ContentArea.Left-1,y-1,sSeparator);
   end;
 
 { Paint the caption inside a tab rectangle, taking into account whether the tab
   and/or control is enabled. }
-procedure TTabBar.PaintCaption(ACaption: String; x: Integer;
-  TabEnabled: Boolean=True);
+procedure TTabBar.PaintCaption;
 var
-  rtTab: TRect;
   ttStyle: TTextStyle;
-  iTabPadding: Integer;
 begin
-  if (Enabled) and (TabEnabled) then Canvas.Font.Color:=FActiveText
-                                else Canvas.Font.Color:=FInactiveText;
-  iTabPadding:=5;
-  rtTab:=Rect(x+iTabPadding,0,x+Trunc(FTabWidth)-iTabPadding,Height);
-  ACaption:=ShortenCaptionToFit(rtTab,ACaption);
+  if (Enabled) and (FTabPainting.Enabled) then Canvas.Font.Color:=FActiveText
+                                          else Canvas.Font.Color:=FInactiveText;
+  if FPainting.DisplayMode=TTabBarDisplay.tbdCaption
+    then ShortenCaptionToFit(FTabPainting.ContentArea.Width);
   ttStyle.Alignment:=TAlignment.taCenter;
   ttStyle.Layout:=TTextLayout.tlCenter;
   ttStyle.Clipping:=True;
   ttStyle.Opaque:=False;
   ttStyle.SingleLine:=True;
-  Canvas.TextRect(rtTab,0,0,ACaption,ttStyle);
+  Canvas.TextRect(FTabPainting.ContentArea,0,0,FTabPainting.Caption,ttStyle);
+  end;
+
+{ Paint the icon.  Complexity: The caption yet to be painted will need shifting
+  to the right, to accomodate the icon, while the combined icon & caption remain
+  centered together in the tab. A small gap is required between icon & caption,
+  and gap must remain constant, independent of tab width or other measurements.
+
+  We measure text width to calculate the desired icon x position (offset).  The
+  caption rendering area's left-edge is then shifted by the width of the icon. }
+procedure TTabBar.PaintIcon;
+begin
+  if not Assigned(FImages) then Exit;
+  FTabPainting.IconWidth:=Min(FTabPainting.ContentArea.Height,
+    FTabPainting.IconWidth);
+  if FTabPainting.Index<FImages.Count then begin
+    CalcIconPosition;
+    ShiftCaptionPosition;
+    DrawScaledIcon(FTabPainting.Index);
+    end;
+  end;
+
+{ Paint the icon into the tab at the correct scale. }
+procedure TTabBar.DrawScaledIcon(IconIndex: Integer);
+begin
+  FImages.DrawForPPI(Canvas, FTabPainting.IconX, FTabPainting.IconY,
+    IconIndex, FTabPainting.IconWidth, FPainting.PPIWindows,
+    FPainting.ScaleFactorMacOS,FTabPainting.Enabled and Enabled);
+  end;
+
+{ Determine the coords for the icon. Fairly straight forward on macOS:
+  Calculations are all performed at the traditional 96dpi regardless of screen
+  PPI. On MSWindows though it is up to us to incorporate screen PPI into our
+  calculations... }
+procedure TTabBar.CalcIconPosition;
+var
+  tw,offset,iw,ih,iTweak: Integer;
+begin
+  iTweak:=4;
+  iw:=Trunc(FTabPainting.IconWidth*FPainting.ScalingForMSWindows)+iTweak;
+  ih:=Trunc(FTabPainting.IconHeight*FPainting.ScalingForMSWindows)-1;
+  if FTabPainting.ContentArea.Width<(iw+(4*FPainting.em))
+    then FPainting.DisplayMode:=TTabBarDisplay.tbdIcon
+    else ShortenCaptionToFit(FTabPainting.ContentArea.Width-iw);
+  if FPainting.DisplayMode=TTabBarDisplay.tbdIcon then begin
+    offset:=(FTabPainting.ContentArea.Width-iw+iTweak) div 2;
+    end
+  else begin
+    tw:=Canvas.TextWidth(FTabPainting.Caption)+iw;
+    offset:=(FTabPainting.ContentArea.Width-tw) div 2;
+    end;
+  FTabPainting.IconX:=FTabPainting.ContentArea.Left+offset;
+  FTabPainting.IconY:=(Height-ih) div 2;
+  end;
+
+{ When painting a caption alongside an icon, we first shift the left-edge of the
+  caption rendering rectangle inwards by the width of the icon. }
+procedure TTabBar.ShiftCaptionPosition;
+begin
+  FTabPainting.ContentArea.Left:=RoundToNearest(FTabPainting.ContentArea.Left
+    +((FTabPainting.IconWidth+2)*FPainting.ScalingForMSWindows));
+  if Odd(FTabPainting.ContentArea.Width)
+    then FTabPainting.ContentArea.Right:=FTabPainting.ContentArea.Right+1;
+  end;
+
+{ If the requested Display setting is unsuitable, e.g. Icons requested but
+  no icons assigned, select an alternative. }
+procedure TTabBar.SanitiseDisplayMode;
+begin
+  FPainting.DisplayMode:=Display;
+  if Display=TTabBarDisplay.tbdCaption then Exit;
+  if (Assigned(FImages)) and (FImages.Count>FTabPainting.Index) then begin
+    if FTabPainting.Caption=''
+      then FPainting.DisplayMode:=TTabBarDisplay.tbdIcon
+      else FPainting.DisplayMode:=Display;
+    end
+  else FPainting.DisplayMode:=TTabBarDisplay.tbdCaption;
+  FPainting.TabMinWidth:=Trunc(FTabMinWidth*FPainting.ScalingForMSWindows);
+  end;
+
+procedure TTabBar.CalcTabArea(ALeft: Integer);
+var
+  ARight: Integer;
+begin
+  ARight:=ALeft+RoundToNearest(FTabWidth);
+  FTabPainting.ContentArea:=Rect(ALeft,0,ARight,Height);
+  end;
+
+{ Pre-calculate the scaling to apply to accommodate Retina/HighDPI screen pixel
+  densities on macOS and Windows. }
+procedure TTabBar.CalcScaling;
+var
+  dAspectRatio,dFactor: Double;
+  iw: Integer;
+begin
+  if Assigned(FImages) then begin
+    FPainting.PPIWindows:=Screen.PixelsPerInch;
+    FPainting.ScaleFactorMacOS:=Self.GetCanvasScaleFactor;
+    FPainting.ScalingForMSWindows:=FPainting.PPIWindows/96;
+    dFactor:=FPainting.ScaleFactorMacOS;
+    if dFactor=1 then dFactor:=FPainting.ScalingForMSWindows;
+    dAspectRatio:=FImages.Width/FImages.Height;
+    if FImages.Width<(FImageWidth*dFactor)
+      then iw:=RoundToNearest(FImages.Width/dFactor)
+      else iw:=FImageWidth;
+    FTabPainting.IconWidth:=iw;
+    FTabPainting.IconHeight:=RoundToNearest(iw*dAspectRatio);
+    end;
   end;
 
 { If a caption is wider than the space available on the tab, we shorten it,
   and append an ellipsis. }
-function TTabBar.ShortenCaptionToFit(ARect: TRect; ACaption: String): String;
+procedure TTabBar.ShortenCaptionToFit(AWidth: Integer);
 var
   iFitCount: Integer;
+  sCaption: String;
 begin
-  if UTF8Length(ACaption)>1 then begin
-    iFitCount:=Canvas.TextFitInfo(ACaption,ARect.Width);
-    if iFitCount<UTF8Length(ACaption)
-      then ACaption:=ACaption.Remove(iFitCount-2)+'…';
+  sCaption:=FTabPainting.Caption;
+  if UTF8Length(sCaption)>1 then begin
+    iFitCount:=Canvas.TextFitInfo(sCaption,AWidth);
+    if iFitCount<UTF8Length(sCaption)
+      then FTabPainting.Caption:=Trim(sCaption.Remove(iFitCount-2))+'…';
     end;
-  Result:=ACaption;
   end;
 
 { The observer attached to FTabs has reported a change in the caption strings,
@@ -330,6 +480,31 @@ begin
     end;
   SetTabIndex(i);
   end;
+{ Setter for Display.  Display caption, icons or both. }
+procedure TTabBar.SetDisplay(AValue: TTabBarDisplay);
+begin
+  if FDisplay=AValue then Exit;
+  FDisplay:=AValue;
+  Invalidate;
+  end;
+
+{ Setter for Images property. IDE calls this procedure when an ImageList is
+  assigned to the control. }
+procedure TTabBar.SetImages(AValue: TCustomImageList);
+begin
+  if FImages = AValue then Exit;
+  FImages := AValue;
+  Invalidate;
+  end;
+
+procedure TTabBar.SetImageWidth(AValue: Integer);
+begin
+  if FImageWidth=AValue then Exit;
+  if AValue>=8 then begin
+    FImageWidth:=AValue;
+    Invalidate;
+    end;
+  end;
 
 { Setter for Style property. Sets the display style of the TabBar control,
   e.g. tbsRounded. }
@@ -353,10 +528,12 @@ begin
 { Returns True if the specified tab is Enabled. }
 function TTabBar.TabIsEnabled(Index: Integer): Boolean;
 begin
-  if {(Index<0) or} (Index>Length(FTabData)-1) then
+  if Index=-1 then Result:=False else begin
+    if (Index<-1) or (Index>Length(FTabData)-1) then
     raise Exception.Create(Self.Name+': Index('+IntToStr(Index)+' of '
       +IntToStr(Length(FTabData))+') out of range.');
-  if Index<0 then Result:=False else Result:=FTabData[Index].Enabled;
+    Result:=FTabData[Index].Enabled;
+    end;
   end;
 
 { Getter for TabEnabled property. Returns True if the current tab is Enabled. }
@@ -404,20 +581,11 @@ var
 begin
   inherited MouseDown(Button,Shift,X,Y);
   if TabCount>0 then begin
-    tw:=Max(Width div TabCount,FTabMinWidth)+1;
+    tw:=Max(Width div TabCount,FPainting.TabMinWidth)+1;
     i:=X div tw;
     if (i>-1) and (i<TabCount) and (FTabData[i].Enabled) then TabIndex:=i;
     end;
   end;
-
-{function TTabBar.CalculateTextCoords(ACaption: String): TPoint;
-var
-  tx: TSize;
-begin
-  tx:=Canvas.TextExtent(ACaption);
-  Result.X:=(Trunc(FTabWidth)-tx.Width) div 2;
-  Result.Y:=(Height-tx.Height) div 2;
-  end;}
 
 procedure Register;
 begin
