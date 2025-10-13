@@ -17,6 +17,10 @@ interface uses
 
 type
 
+  { TTabBarStyle }
+
+  TTabBarStyle=(tbsRectangle,tbsRounded);
+
   { TTabData - Data per tab. }
 
   TTabData = record
@@ -31,6 +35,7 @@ type
 
   TTabBar = class(TCustomControl)
   private
+    FStyle: TTabBarStyle;
     FTabs: TStrings;
     FTabCount: Integer;
     FTabIndex: Integer;
@@ -48,6 +53,7 @@ type
     procedure PaintSeparator(AIndex, x: Integer);
     procedure PaintTabs;
     procedure SelectALowerTab;
+    procedure SetStyle(AValue: TTabBarStyle);
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
     function ShortenCaptionToFit(ARect: TRect; ACaption: String): String;
@@ -66,6 +72,7 @@ type
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
+    property Style: TTabBarStyle read FStyle write SetStyle;
     property Tabs: TStrings read FTabs write SetTabCaptions;
     property TabIndex: Integer read FTabIndex write SetTabIndex;
     property Align;
@@ -193,6 +200,10 @@ procedure TTabBar.PaintBackground;
 begin
   Canvas.Brush.Color:=FBarBackground;
   Canvas.Pen.Color:=FBarBorder;
+  case FStyle of
+    TTabBarStyle.tbsRectangle: FTabCurve:=0;
+    TTabBarStyle.tbsRounded: FTabCurve:=5;
+    end;
   Canvas.RoundRect(ClientRect,FTabCurve,FTabCurve);
   end;
 
@@ -318,6 +329,14 @@ begin
       end;
     end;
   SetTabIndex(i);
+  end;
+
+{ Set the display style of the TabBar control, e.g. tbsRounded. }
+procedure TTabBar.SetStyle(AValue: TTabBarStyle);
+begin
+  if FStyle=AValue then Exit;
+  FStyle:=AValue;
+  Invalidate;
   end;
 
 { Assign new tab captions - called by the IDE Form Designer Strings editor. }
