@@ -239,11 +239,13 @@ begin
 
 procedure TTabBar.PaintBackground;
 begin
+  CalcScaling;
   Canvas.Brush.Color:=FBarBackground;
   Canvas.Pen.Color:=FBarBorder;
   case FStyle of
     TTabBarStyle.tbsRectangle: FTabCurve:=0;
-    TTabBarStyle.tbsRounded: FTabCurve:=5;
+    TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
+      RoundToNearest(5*FPainting.ScalingForMSWindows));
     end;
   Canvas.RoundRect(ClientRect,FTabCurve,FTabCurve);
   end;
@@ -254,7 +256,6 @@ var
   x: Double;
 begin
   if TabCount<1 then Exit;
-  CalcScaling;
   FTabWidth:=Max((Width/TabCount),FPainting.TabMinWidth);
   x:=0;
   for f:=0 to TabCount-1 do begin
