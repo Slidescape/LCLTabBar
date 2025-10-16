@@ -200,7 +200,7 @@ begin
   FTabMinWidth:=32;
   FTabCurve:=5;
   FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
-  FImageWidth:=24;
+  FImageWidth:=16;
   FTabs:=TTextStrings.Create;
   AttachObserver;
   //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
@@ -481,6 +481,7 @@ begin
     end;
   SetTabIndex(i);
   end;
+
 { Setter for Display.  Display caption, icons or both. }
 procedure TTabBar.SetDisplay(AValue: TTabBarDisplay);
 begin
@@ -498,6 +499,7 @@ begin
   Invalidate;
   end;
 
+{ Setter for ImageWidth - the requested width of an icon. }
 procedure TTabBar.SetImageWidth(AValue: Integer);
 begin
   if FImageWidth=AValue then Exit;
