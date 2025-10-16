@@ -157,6 +157,7 @@ var
   FBarBackground: Integer = $EAEAEA;
   FBarBorder: Integer = $D5D5D5;
   FTabHighlight: Integer = $FFFFFF;
+  FTabBorder: Integer = $CCCCCC;
   FInactiveText: Integer = $AAAAAA;
   FActiveText: Integer = $333333;
 
@@ -266,7 +267,7 @@ begin
     SanitiseDisplayMode;
     CalcTabArea(RoundToNearest(x));
     if f=TabIndex then PaintHighlight else PaintSeparator;
-    FTabPainting.ContentArea.Inflate(-6,-4);
+    FTabPainting.ContentArea.Inflate(-6,-2);
     if FPainting.DisplayMode>TTabBarDisplay.tbdCaption then PaintIcon;
     if FPainting.DisplayMode<TTabBarDisplay.tbdIcon then PaintCaption;
     x:=x+FTabWidth;
@@ -280,7 +281,7 @@ var
   iLeft, iRight: Integer;
 begin
   Canvas.Brush.Color:=FTabHighlight;
-  Canvas.Pen.Color:=FBarBorder;
+  Canvas.Pen.Color:=FTabBorder;
   iLeft:=FTabPainting.ContentArea.Left;
   iRight:=FTabPainting.ContentArea.Right;
   if iRight>Width then iRight:=Width;
@@ -416,7 +417,7 @@ begin
 procedure TTabBar.CalcScaling;
 var
   dAspectRatio,dFactor: Double;
-  iw: Integer;
+  iw,iHeightLimit: Integer;
 begin
   if Assigned(FImages) then begin
     FPainting.PPIWindows:=Screen.PixelsPerInch;
@@ -430,6 +431,12 @@ begin
       else iw:=FImageWidth;
     FTabPainting.IconWidth:=iw;
     FTabPainting.IconHeight:=RoundToNearest(iw*dAspectRatio);
+    iHeightLimit:=Height-3;
+    if FTabPainting.IconHeight>=iHeightLimit then begin
+      dFactor:=FTabPainting.IconHeight/iHeightLimit;
+      FTabPainting.IconWidth:=RoundToNearest(FTabPainting.IconWidth/dFactor);
+      FTabPainting.IconHeight:=iHeightLimit;
+      end;
     end;
   end;
 
