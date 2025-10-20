@@ -35,6 +35,16 @@ type
     end;
   TTabArray = array of TTabData;
 
+  TTabPalette = record
+    BarBackground: TColor;
+    BarBorder: TColor;
+    TabHighlight: TColor;
+    TabBorder: TColor;
+    TabHighlightText: TColor;
+    InactiveText: TColor;
+    ActiveText: TColor;
+    end;
+
   { TPainting / TTabPainting - Temp info while control / tab is being painted. }
 
   TPainting = record
@@ -68,6 +78,7 @@ type
     FTabMinWidth: Integer;
     FTabCurve: Integer;
     FTabData: TTabArray;
+    FPalette: TTabPalette;
     FPainting: TPainting;
     FTabPainting: TTabPainting;
     FImages: TCustomImageList;
@@ -92,6 +103,7 @@ type
     procedure SetStyle(AValue: TTabBarStyle);
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
+    procedure SetupColours;
     procedure ShiftCaptionPosition;
     procedure ShortenCaptionToFit(AWidth: Integer);
     function TabIsEnabled(Index: Integer): Boolean;
@@ -154,12 +166,22 @@ type
 procedure Register;
 
 var
-  FBarBackground: Integer = $EAEAEA;
-  FBarBorder: Integer = $D5D5D5;
-  FTabHighlight: Integer = $FFFFFF;
-  FTabBorder: Integer = $CCCCCC;
-  FInactiveText: Integer = $AAAAAA;
-  FActiveText: Integer = $333333;
+  FPaletteLight:TTabPalette=(
+    BarBackground:$EAEAEA;
+    BarBorder:$D5D5D5;
+    TabHighlight:$FFFFFF;
+    TabBorder:$CCCCCC;
+    TabHighlightText:$333333;
+    InactiveText:$AAAAAA;
+    ActiveText:$444444);
+  FPaletteDark:TTabPalette=(
+    BarBackground:$444444;
+    BarBorder:$535353;
+    TabHighlight:$707070;
+    TabBorder:$797979;
+    TabHighlightText:$F0F0F0;
+    InactiveText:$5F5F5F;
+    ActiveText:$CECECE);
 
 implementation uses
   Types, TextStrings, LazUtilities, LazUTF8, GraphType, Forms, TypInfo,
@@ -240,9 +262,10 @@ begin
 
 procedure TTabBar.PaintBackground;
 begin
+  SetupColours;
   CalcScaling;
-  Canvas.Brush.Color:=FBarBackground;
-  Canvas.Pen.Color:=FBarBorder;
+  Canvas.Brush.Color:=FPalette.BarBackground;
+  Canvas.Pen.Color:=FPalette.BarBorder;
   case FStyle of
     TTabBarStyle.tbsRectangle: FTabCurve:=0;
     TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
@@ -271,7 +294,7 @@ begin
     if FPainting.DisplayMode>TTabBarDisplay.tbdCaption then PaintIcon;
     if FPainting.DisplayMode<TTabBarDisplay.tbdIcon then PaintCaption;
     x:=x+FTabWidth;
-    Canvas.Brush.Color:=FBarBackground;
+    Canvas.Brush.Color:=FPalette.BarBackground;
     end;
   end;
 
@@ -280,8 +303,8 @@ procedure TTabBar.PaintHighlight;
 var
   iLeft, iRight: Integer;
 begin
-  Canvas.Brush.Color:=FTabHighlight;
-  Canvas.Pen.Color:=FTabBorder;
+  Canvas.Brush.Color:=FPalette.TabHighlight;
+  Canvas.Pen.Color:=FPalette.TabBorder;
   iLeft:=FTabPainting.ContentArea.Left;
   iRight:=FTabPainting.ContentArea.Right;
   if iRight>Width then iRight:=Width;
@@ -305,7 +328,7 @@ begin
   sSeparator:='|';
   th:=Canvas.TextHeight(sSeparator);
   y:=(Height-th) div 2;
-  Canvas.Font.Color:=FBarBorder;
+  Canvas.Font.Color:=FPalette.BarBorder;
   Canvas.TextOut(FTabPainting.ContentArea.Left-1,y-1,sSeparator);
   end;
 
@@ -315,8 +338,12 @@ procedure TTabBar.PaintCaption;
 var
   ttStyle: TTextStyle;
 begin
-  if (Enabled) and (FTabPainting.Enabled) then Canvas.Font.Color:=FActiveText
-                                          else Canvas.Font.Color:=FInactiveText;
+  if (Enabled) and (FTabPainting.Enabled) then begin
+    if FTabPainting.Index=TabIndex
+      then Canvas.Font.Color:=FPalette.TabHighlightText
+      else Canvas.Font.Color:=FPalette.ActiveText;
+    end
+  else Canvas.Font.Color:=FPalette.InactiveText;
   if FPainting.DisplayMode=TTabBarDisplay.tbdCaption
     then ShortenCaptionToFit(FTabPainting.ContentArea.Width);
   ttStyle.Alignment:=TAlignment.taCenter;
@@ -438,6 +465,17 @@ begin
       FTabPainting.IconHeight:=iHeightLimit;
       end;
     end;
+  end;
+
+procedure TTabBar.SetupColours;
+var
+  cText,cWindow:TColor;
+  bDarkMode: Boolean;
+begin
+  cText:=ColorToRGB(clWindowText);
+  cWindow:=ColorToRGB(clWindow);
+  bDarkMode:=Green(cWindow)<Green(cText);
+  if bDarkMode then FPalette:=FPaletteDark else FPalette:=FPaletteLight;
   end;
 
 { If a caption is wider than the space available on the tab, we shorten it,
