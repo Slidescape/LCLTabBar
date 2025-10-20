@@ -83,11 +83,12 @@ type
     FTabPainting: TTabPainting;
     FImages: TCustomImageList;
     FOnSelect: TNotifyEvent;
-    procedure AttachObserver;
+    procedure AttachObserver(Subject: TPersistent);
     procedure CalcIconPosition;
     procedure CalcScaling;
     procedure CalcTabArea(ALeft: Integer);
     procedure DrawScaledIcon(IconIndex: Integer);
+    procedure ImageChangeObserved;
     procedure PaintIcon;
     function RoundToNearest(Value: Double): Integer;
     procedure PaintBackground;
@@ -204,8 +205,10 @@ begin
     if Supports(ASender,IFPObserved,interf) then
       interf.FPODetachObserver(Self);
   ooChange:
-    if (Assigned(TabBar)) and (ASender is TTextStrings)
-      then TabBar.TextChangeObserved;
+    if (Assigned(TabBar)) then begin
+      if (ASender is TTextStrings) then TabBar.TextChangeObserved
+      else if (ASender is TImageList) then TabBar.ImageChangeObserved;
+      end;
   else
     SendDebug('Observed a change in '+ASender.ClassName+'; '
       +GetOperationName(Operation));
@@ -225,7 +228,7 @@ begin
   FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
   FImageWidth:=16;
   FTabs:=TTextStrings.Create;
-  AttachObserver;
+  AttachObserver(FTabs);
   //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
   TabIndex:=-1;
   end;
@@ -236,16 +239,15 @@ begin
   //Do I need to free the observer here?
   end;
 
-{ Create and attach an observer to report any changes to caption strings. }
-procedure TTabBar.AttachObserver;
+{ Create and attach an observer to report any changes in specified Subject. }
+procedure TTabBar.AttachObserver(Subject: TPersistent);
 var
-  subject: TStrings;
   observer: TTsObserver;
   interf: IFPObserved;
 begin
-  subject:=FTabs;
+  if not Assigned(Subject) then Exit;
   observer:=TTsObserver.Create;
-  if Supports(subject, IFPObserved, interf) then
+  if Supports(Subject, IFPObserved, interf) then
   begin
     interf.FPOAttachObserver(observer); //Attach observer to subject interface.
     observer.TabBar:=Self;              //Observer will need to notify TabBar.
@@ -510,6 +512,13 @@ begin
   Invalidate;
   end;
 
+{ The observer attached to FImages has reported a change, so we Invalidate the
+  control so that it will repaint with whatever has changed in FImages. }
+procedure TTabBar.ImageChangeObserved;
+begin
+  Invalidate;
+  end;
+
 { If the currently selected tab index no longer exists i.e. tab count has been
   reduced - we select a lower tab index, by picking the highest available
   (enabled) tab, or -1 if there are no enabled tabs. }
@@ -541,6 +550,7 @@ procedure TTabBar.SetImages(AValue: TCustomImageList);
 begin
   if FImages = AValue then Exit;
   FImages := AValue;
+  AttachObserver(FImages);
   Invalidate;
   end;
 
