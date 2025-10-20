@@ -446,7 +446,7 @@ begin
 procedure TTabBar.CalcScaling;
 var
   dAspectRatio,dFactor: Double;
-  iw,iHeightLimit: Integer;
+  iw,ih,iHeightLimit: Integer;
 begin
   if Assigned(FImages) then begin
     FPainting.PPIWindows:=Screen.PixelsPerInch;
@@ -460,7 +460,8 @@ begin
       else iw:=FImageWidth;
     FTabPainting.IconWidth:=iw;
     FTabPainting.IconHeight:=RoundToNearest(iw*dAspectRatio);
-    iHeightLimit:=Height-3;
+    ih:=Trunc(Height/FPainting.ScalingForMSWindows);
+    iHeightLimit:=ih-3;
     if FTabPainting.IconHeight>=iHeightLimit then begin
       dFactor:=FTabPainting.IconHeight/iHeightLimit;
       FTabPainting.IconWidth:=RoundToNearest(FTabPainting.IconWidth/dFactor);
