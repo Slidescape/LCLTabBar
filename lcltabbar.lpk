@@ -3,6 +3,7 @@
   <Package Version="5">
     <Name Value="LCLTabBar"/>
     <Type Value="RunAndDesignTime"/>
+    <Author Value="Cascade/Slidescape"/>
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
@@ -10,6 +11,9 @@
         <UnitOutputDirectory Value="units/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
+    <Description Value="LCL TabBar Visual Control.  Tab like header, picker and context-switcher.  Similar behaviour to a Page Control but without the pages."/>
+    <License Value="See the files in the License folder for license details."/>
+    <Version Minor="5"/>
     <Files>
       <Item>
         <Filename Value="package-contents/tabbar.pas"/>
