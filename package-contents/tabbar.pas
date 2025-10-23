@@ -185,8 +185,7 @@ var
     ActiveText:$CECECE);
 
 implementation uses
-  Types, TextStrings, LazUtilities, LazUTF8, GraphType, Forms, TypInfo,
-  DBugIntF;
+  Types, LazUtilities, LazUTF8, GraphType, Forms, TypInfo, DBugIntF;
 
 { TTsObserver }
 
@@ -206,7 +205,7 @@ begin
       interf.FPODetachObserver(Self);
   ooChange:
     if (Assigned(TabBar)) then begin
-      if (ASender is TTextStrings) then TabBar.TextChangeObserved
+      if (ASender is TStringlist) then TabBar.TextChangeObserved
       else if (ASender is TImageList) then TabBar.ImageChangeObserved;
       end;
   else
@@ -224,10 +223,11 @@ begin
   Height:=25;
   FTabWidth:=60;
   FTabMinWidth:=32;
+  FStyle:=TTabBarStyle.tbsRectangle;
   FTabCurve:=5;
   FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
   FImageWidth:=16;
-  FTabs:=TTextStrings.Create;
+  FTabs:=TStringlist.Create;
   AttachObserver(FTabs);
   //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
   TabIndex:=-1;
