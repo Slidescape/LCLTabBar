@@ -107,7 +107,6 @@ type
     procedure SetupColours;
     procedure ShiftCaptionPosition;
     procedure ShortenCaptionToFit(AWidth: Integer);
-    function TabIsEnabled(Index: Integer): Boolean;
   protected
     procedure Paint; override;
     procedure TextChangeObserved; virtual;
@@ -119,6 +118,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure SetTabEnabled(Index: Integer; AValue: Boolean); overload;
+    function TabIsEnabled(Index: Integer): Boolean;
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
