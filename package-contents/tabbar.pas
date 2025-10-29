@@ -23,7 +23,7 @@ type
 
   { TTabBarStyle }
 
-  TTabBarStyle=(tbsRectangle,tbsRounded);
+  TTabBarStyle=(tbsRectangle,tbsRounded,tbsLozenge);
 
   { TTabData - Data per tab. }
 
@@ -171,7 +171,7 @@ var
     BarBackground:$EAEAEA;
     BarBorder:$D5D5D5;
     TabHighlight:$FFFFFF;
-    TabBorder:$CCCCCC;
+    TabBorder:$CACACA;
     TabHighlightText:$333333;
     InactiveText:$AAAAAA;
     ActiveText:$444444);
@@ -272,6 +272,8 @@ begin
     TTabBarStyle.tbsRectangle: FTabCurve:=0;
     TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
       RoundToNearest(5*FPainting.ScalingForMSWindows));
+    TTabBarStyle.tbsLozenge:
+      FTabCurve:=Trunc(Height*FPainting.ScalingForMSWindows);
     end;
   Canvas.RoundRect(ClientRect,FTabCurve,FTabCurve);
   end;
