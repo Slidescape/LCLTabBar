@@ -664,8 +664,8 @@ var
 begin
   inherited MouseDown(Button,Shift,X,Y);
   if TabCount>0 then begin
-    tw:=Max(Width/TabCount,FPainting.TabMinWidth);
-    i:=Trunc(X/tw);
+    tw:=Max(Width,FPainting.TabMinWidth*TabCount);
+    i:=RoundToNearest((X*TabCount)/tw)-1;
     if (i>-1) and (i<TabCount) and (FTabData[i].Enabled) then TabIndex:=i;
     end;
   end;
