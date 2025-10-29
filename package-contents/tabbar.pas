@@ -84,7 +84,7 @@ type
     FImages: TCustomImageList;
     FOnSelect: TNotifyEvent;
     procedure AttachObserver(Subject: TPersistent);
-    procedure CalcIconPosition;
+    procedure CalcTabLayout;
     procedure CalcScaling;
     procedure CalcTabArea(ALeft: Integer);
     procedure DrawScaledIcon(IconIndex: Integer);
@@ -97,6 +97,7 @@ type
     procedure PaintSeparator;
     procedure PaintTabs;
     procedure SanitiseDisplayMode;
+    procedure SanitiseIconWidth;
     procedure SelectALowerTab;
     procedure SetDisplay(AValue: TTabBarDisplay);
     procedure SetImages(AValue: TCustomImageList);
@@ -105,7 +106,7 @@ type
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
     procedure SetupColours;
-    procedure ShiftCaptionPosition;
+    procedure ShiftCaptionHorizontal;
     procedure ShortenCaptionToFit(AWidth: Integer);
   protected
     procedure Paint; override;
@@ -358,23 +359,19 @@ begin
   Canvas.TextRect(FTabPainting.ContentArea,0,0,FTabPainting.Caption,ttStyle);
   end;
 
-{ Paint the icon.  Complexity: The caption yet to be painted will need shifting
-  to the right, to accomodate the icon, while the combined icon & caption remain
-  centered together in the tab. A small gap is required between icon & caption,
-  and gap must remain constant, independent of tab width or other measurements.
+{ Paint the icon.  Complexity: The caption yet to be painted will need shifting,
+  to accomodate the icon, while the combined icon & caption remain centered
+  together in the tab. A small gap is required between icon & caption, and the
+  gap must remain constant, independent of tab size or other measurements.
 
   We measure text width to calculate the desired icon x position (offset).  The
   caption rendering area's left-edge is then shifted by the width of the icon. }
 procedure TTabBar.PaintIcon;
 begin
-  if not Assigned(FImages) then Exit;
-  FTabPainting.IconWidth:=Min(FTabPainting.ContentArea.Height,
-    FTabPainting.IconWidth);
-  if FTabPainting.Index<FImages.Count then begin
-    CalcIconPosition;
-    ShiftCaptionPosition;
-    DrawScaledIcon(FTabPainting.Index);
-    end;
+  if (not Assigned(FImages)) or (FTabPainting.Index>=FImages.Count) then Exit;
+  SanitiseIconWidth;
+  CalcTabLayout;
+  DrawScaledIcon(FTabPainting.Index);
   end;
 
 { Paint the icon into the tab at the correct scale. }
@@ -385,21 +382,34 @@ begin
     FPainting.ScaleFactorMacOS,FTabPainting.Enabled and Enabled);
   end;
 
-{ Determine the coords for the icon. Fairly straight forward on macOS:
-  Calculations are all performed at the traditional 96dpi regardless of screen
-  PPI. On MSWindows though it is up to us to incorporate screen PPI into our
-  calculations... }
-procedure TTabBar.CalcIconPosition;
+{ Determine the layout for icon and/or caption. On macOS calculations are all
+  performed at the traditional 96dpi regardless of screen PPI. On MSWindows
+  though it is up to us to incorporate screen PPI into our calculations.
+
+  Layout factors include: Caption/Partial Caption only, Icon only, Icon
+  alongside Caption/Partial Caption, Icon above Caption/Partial Caption. }
+procedure TTabBar.CalcTabLayout;
 var
-  tw,offset,iw,ih,iTweak: Integer;
+  tw,th,offset,iw,ih,xw,iTweak: Integer;
+  bIconAbove: Boolean;
 begin
   iTweak:=4;
   iw:=Trunc(FTabPainting.IconWidth*FPainting.ScalingForMSWindows)+iTweak;
   ih:=Trunc(FTabPainting.IconHeight*FPainting.ScalingForMSWindows)-1;
-  if FTabPainting.ContentArea.Width<(iw+(4*FPainting.em))
-    then FPainting.DisplayMode:=TTabBarDisplay.tbdIcon
-    else ShortenCaptionToFit(FTabPainting.ContentArea.Width-iw);
-  if FPainting.DisplayMode=TTabBarDisplay.tbdIcon then begin
+  th:=Canvas.TextHeight(FTabPainting.Caption)+iTweak;
+  bIconAbove:=(FPainting.DisplayMode=TTabBarDisplay.tbdCaptionAndIcon)
+    and (th+ih<Height);
+  if bIconAbove then xw:=0 else xw:=iw;
+  { If there isn't space for a decent fragment of caption, show Icon only. }
+  if FTabPainting.ContentArea.Width<(xw+(4*FPainting.em)) then begin
+    FPainting.DisplayMode:=TTabBarDisplay.tbdIcon;
+    bIconAbove:=False;
+    end
+  else begin
+    ShortenCaptionToFit(FTabPainting.ContentArea.Width-xw);
+    if bIconAbove then Inc(FTabPainting.ContentArea.Top,ih+iTweak);
+    end;
+  if (FPainting.DisplayMode=TTabBarDisplay.tbdIcon) or (bIconAbove) then begin
     offset:=(FTabPainting.ContentArea.Width-iw+iTweak) div 2;
     end
   else begin
@@ -407,17 +417,28 @@ begin
     offset:=(FTabPainting.ContentArea.Width-tw) div 2;
     end;
   FTabPainting.IconX:=FTabPainting.ContentArea.Left+offset;
-  FTabPainting.IconY:=(Height-ih) div 2;
+  if bIconAbove then FTabPainting.IconY:=(Height-ih-th+iTweak) div 2
+  else begin
+    FTabPainting.IconY:=(Height-ih) div 2;
+    ShiftCaptionHorizontal;
+    end;
   end;
 
 { When painting a caption alongside an icon, we first shift the left-edge of the
   caption rendering rectangle inwards by the width of the icon. }
-procedure TTabBar.ShiftCaptionPosition;
+procedure TTabBar.ShiftCaptionHorizontal;
 begin
   FTabPainting.ContentArea.Left:=RoundToNearest(FTabPainting.ContentArea.Left
     +((FTabPainting.IconWidth+2)*FPainting.ScalingForMSWindows));
   if Odd(FTabPainting.ContentArea.Width)
     then FTabPainting.ContentArea.Right:=FTabPainting.ContentArea.Right+1;
+  end;
+
+{ Ensure icon is not larger than the available height. }
+procedure TTabBar.SanitiseIconWidth;
+begin
+  FTabPainting.IconWidth:=Min(FTabPainting.ContentArea.Height,
+    FTabPainting.IconWidth);
   end;
 
 { If the requested Display setting is unsuitable, e.g. Icons requested but
