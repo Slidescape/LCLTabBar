@@ -23,7 +23,7 @@ type
 
   { TTabBarStyle }
 
-  TTabBarStyle=(tbsRectangle,tbsRounded,tbsLozenge);
+  TTabBarStyle=(tbsRectangle,tbsSoftRect,tbsRounded,tbsLozenge);
 
   { TTabData - Data per tab. }
 
@@ -271,10 +271,11 @@ begin
   Canvas.Pen.Color:=FPalette.BarBorder;
   case FStyle of
     TTabBarStyle.tbsRectangle: FTabCurve:=0;
-    TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
+    TTabBarStyle.tbsSoftRect: FTabCurve:=Min(Height,
       RoundToNearest(5*FPainting.ScalingForMSWindows));
-    TTabBarStyle.tbsLozenge:
-      FTabCurve:=Height;
+    TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
+      RoundToNearest(12*FPainting.ScalingForMSWindows));
+    TTabBarStyle.tbsLozenge: FTabCurve:=Height;
     end;
   Canvas.RoundRect(ClientRect,FTabCurve,FTabCurve);
   end;

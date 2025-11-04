@@ -562,9 +562,10 @@ object Form1: TForm1
         BorderSpacing.Around = 8
         Font.Height = -13
         ItemHeight = 18
-        ItemIndex = 1
+        ItemIndex = 2
         Items.Strings = (
           'Rectangle'
+          'SoftRect'
           'Rounded'
           'Lozenge'
         )
