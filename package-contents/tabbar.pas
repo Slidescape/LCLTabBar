@@ -274,7 +274,7 @@ begin
     TTabBarStyle.tbsRounded: FTabCurve:=Min(Height,
       RoundToNearest(5*FPainting.ScalingForMSWindows));
     TTabBarStyle.tbsLozenge:
-      FTabCurve:=Trunc(Height*FPainting.ScalingForMSWindows);
+      FTabCurve:=Height;
     end;
   Canvas.RoundRect(ClientRect,FTabCurve,FTabCurve);
   end;
