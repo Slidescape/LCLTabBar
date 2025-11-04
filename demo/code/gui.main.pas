@@ -195,10 +195,11 @@ begin
 
 procedure TForm1.cbxHeightChange(Sender: TObject);
 var
-  i:Integer;
+  i,h:Integer;
 begin
   i:=cbxHeight.ItemIndex;
-  if i=1 then panTabBar.Height:=64 else panTabBar.Height:=32;
+  if i=1 then h:=64 else h:=32;
+  panTabBar.Height:=panTabBar.Scale96ToForm(h);
   end;
 
 procedure TForm1.TabBar1Select(Sender: TObject);
