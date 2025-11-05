@@ -22,8 +22,10 @@ type
     Bevel2: TBevel;
     Bevel3: TBevel;
     Bevel4: TBevel;
+    Bevel5: TBevel;
     btnDeleteTab: TButton;
     btnAddNewTab: TButton;
+    cbxAccent: TComboBox;
     cbxStyle: TComboBox;
     cbxDisplayMode: TComboBox;
     cbxHeight: TComboBox;
@@ -34,6 +36,7 @@ type
     ImageList1: TImageList;
     ImageList2: TImageList;
     ImageList3: TImageList;
+    labHighlight: TLabel;
     labIconSet: TLabel;
     labHeight: TLabel;
     labTabList: TLabel;
@@ -49,6 +52,7 @@ type
     TabBar1: TTabBar;
     procedure btnDeleteTabClick(Sender: TObject);
     procedure btnAddNewTabClick(Sender: TObject);
+    procedure cbxAccentChange(Sender: TObject);
     procedure cbxDisplayModeChange(Sender: TObject);
     procedure cbxHeightChange(Sender: TObject);
     procedure cbxStyleChange(Sender: TObject);
@@ -183,6 +187,15 @@ begin
   TabBar1.Tabs.Add('New Tab');
   RefreshTabList;
   TabBar1.TabIndex:=MaxInt;
+  end;
+
+procedure TForm1.cbxAccentChange(Sender: TObject);
+var
+  i: Integer;
+begin
+  i:=cbxAccent.ItemIndex;
+  if i<0 then Exit;
+  TabBar1.AccentColor:=TTabBarAccent(i);
   end;
 
 procedure TForm1.cbxDisplayModeChange(Sender: TObject);

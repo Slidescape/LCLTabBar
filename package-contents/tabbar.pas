@@ -25,6 +25,10 @@ type
 
   TTabBarStyle=(tbsRectangle,tbsSoftRect,tbsRounded,tbsLozenge);
 
+  { TTabBarAccent }
+
+  TTabBarAccent=(tbaBright,tbaHot,tbaLight);
+
   { TTabData - Data per tab. }
 
   TTabData = record
@@ -43,6 +47,7 @@ type
     TabHighlightText: TColor;
     InactiveText: TColor;
     ActiveText: TColor;
+    InverseText: TColor;
     end;
 
   { TPainting / TTabPainting - Temp info while control / tab is being painted. }
@@ -71,6 +76,7 @@ type
     FDisplay: TTabBarDisplay;
     FImageWidth: Integer;
     FStyle: TTabBarStyle;
+    FAccent: TTabBarAccent;
     FTabs: TStrings;
     FTabCount: Integer;
     FTabIndex: Integer;
@@ -103,9 +109,12 @@ type
     procedure SetImages(AValue: TCustomImageList);
     procedure SetImageWidth(AValue: Integer);
     procedure SetStyle(AValue: TTabBarStyle);
+    procedure SetAccent(AValue: TTabBarAccent);
     procedure SetTabEnabled(AValue: Boolean); overload;
     function GetTabEnabled: Boolean;
     procedure SetupColours;
+    procedure SetupHighlightColour;
+    procedure SetupPalette;
     procedure ShiftCaptionHorizontal;
     procedure ShortenCaptionToFit(AWidth: Integer);
   protected
@@ -126,6 +135,7 @@ type
     property Display: TTabBarDisplay read FDisplay write SetDisplay;
     property ImageWidth: Integer read FImageWidth write SetImageWidth;
     property Style: TTabBarStyle read FStyle write SetStyle;
+    property AccentColor: TTabBarAccent read FAccent write SetAccent;
     property Tabs: TStrings read FTabs write SetTabCaptions;
     property TabIndex: Integer read FTabIndex write SetTabIndex;
     property Images: TCustomImageList read FImages write SetImages;
@@ -175,7 +185,8 @@ var
     TabBorder:$CACACA;
     TabHighlightText:$333333;
     InactiveText:$AAAAAA;
-    ActiveText:$444444);
+    ActiveText:$444444;
+    InverseText:$FCFCFC);
   FPaletteDark:TTabPalette=(
     BarBackground:$444444;
     BarBorder:$535353;
@@ -183,7 +194,8 @@ var
     TabBorder:$797979;
     TabHighlightText:$F0F0F0;
     InactiveText:$5F5F5F;
-    ActiveText:$CECECE);
+    ActiveText:$CECECE;
+    InverseText:$333333);
 
 implementation uses
   Types, LazUtilities, LazUTF8, GraphType, Forms, TypInfo, DBugIntF;
@@ -232,6 +244,7 @@ begin
   AttachObserver(FTabs);
   //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
   TabIndex:=-1;
+  Canvas.AntialiasingMode:=TAntialiasingMode.amOn;
   end;
 
 destructor TTabBar.Destroy;
@@ -495,14 +508,41 @@ begin
   end;
 
 procedure TTabBar.SetupColours;
+begin
+  SetupPalette;
+  SetupHighlightColour;
+  end;
+
+{ Select the light or dark palette by testing clWindow against clWindowText
+  to see whether system is in Dark Mode. This works on macOS, but MSWindows
+  LCL widgetset may not support dark mode yet. }
+
+procedure TTabBar.SetupPalette;
 var
-  cText,cWindow:TColor;
+  cText,cWindow: TColor;
   bDarkMode: Boolean;
 begin
   cText:=ColorToRGB(clWindowText);
   cWindow:=ColorToRGB(clWindow);
   bDarkMode:=Green(cWindow)<Green(cText);
   if bDarkMode then FPalette:=FPaletteDark else FPalette:=FPaletteLight;
+  end;
+
+{ Set the Highlight Accent colour, then test its luminosity and select the text
+  colour that gives greatest contrast. }
+procedure TTabBar.SetupHighlightColour;
+var
+  i0,i1,i2: Integer;
+begin
+  if FAccent<=TTabBarAccent.tbaBright then Exit;
+  case FAccent of
+    TTabBarAccent.tbaHot: FPalette.TabHighlight:=clHotLight;
+    TTabBarAccent.tbaLight: FPalette.TabHighlight:=clHighlight;
+    end;
+  i0:=Green(ColorToRGB(FPalette.TabHighlight));
+  i1:=Abs(i0-Green(FPalette.ActiveText));
+  i2:=Abs(i0-Green(FPalette.InverseText));
+  if i1<i2 then FPalette.TabHighlightText:=FPalette.InverseText;
   end;
 
 { If a caption is wider than the space available on the tab, we shorten it,
@@ -595,6 +635,16 @@ procedure TTabBar.SetStyle(AValue: TTabBarStyle);
 begin
   if FStyle=AValue then Exit;
   FStyle:=AValue;
+  Invalidate;
+  end;
+
+{ Setter for AccentColor property. Sets the accent colour used to highlight
+  the currently active tab. }
+
+procedure TTabBar.SetAccent(AValue: TTabBarAccent);
+begin
+  if FAccent=AValue then Exit;
+  FAccent:=AValue;
   Invalidate;
   end;
 

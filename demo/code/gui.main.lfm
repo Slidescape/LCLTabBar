@@ -630,6 +630,50 @@ object Form1: TForm1
         BorderSpacing.Around = 24
         Shape = bsTopLine
       end
+      object labHighlight: TLabel
+        Left = 9
+        Height = 16
+        Top = 203
+        Width = 176
+        Align = alTop
+        Alignment = taCenter
+        BorderSpacing.Top = 8
+        BorderSpacing.Around = 8
+        Caption = 'Accent Colour'
+      end
+      object cbxAccent: TComboBox
+        Left = 9
+        Height = 20
+        Top = 227
+        Width = 176
+        Align = alTop
+        BorderSpacing.Around = 8
+        Font.Height = -13
+        ItemHeight = 18
+        ItemIndex = 0
+        Items.Strings = (
+          'Bright'
+          'Hot'
+          'Light'
+        )
+        ParentFont = False
+        ReadOnly = True
+        Style = csDropDownList
+        TabOrder = 2
+        Text = 'Bright'
+        OnChange = cbxAccentChange
+      end
+      object Bevel5: TBevel
+        Left = 49
+        Height = 1
+        Top = 178
+        Width = 96
+        Align = alTop
+        BorderSpacing.Left = 24
+        BorderSpacing.Right = 24
+        BorderSpacing.Around = 24
+        Shape = bsTopLine
+      end
     end
     object panCaptions: TPanel
       Left = 224
@@ -745,7 +789,7 @@ object Form1: TForm1
     Scaled = True
     Width = 48
     Left = 440
-    Top = 280
+    Top = 384
     Bitmap = {
       4C7A060000003000000030000000413800000000000078DAEDBD77705457BAEE
       7DE69FCF8633753E8FC3783CE9DEF3D5AD7BC6638C6D824D30186372CE490890
@@ -1205,7 +1249,7 @@ object Form1: TForm1
     Scaled = True
     Width = 32
     Left = 528
-    Top = 280
+    Top = 384
     Bitmap = {
       4C7A050000002000000020000000090D00000000000078DAED9C776C14D91DC7
       0D44288001534D33DDC660C01870A183690604186C04A618178C8DC1B4D08412
@@ -1319,7 +1363,7 @@ object Form1: TForm1
     Scaled = True
     Width = 48
     Left = 528
-    Top = 360
+    Top = 440
     Bitmap = {
       4C7A050000003000000030000000151400000000000078DAED9D79545447BEC7
       F3723C3973E66478F372DE99F7C74C3293978911C45ED811C52DEE4625B81B50
