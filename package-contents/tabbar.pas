@@ -485,10 +485,10 @@ var
   dAspectRatio,dFactor: Double;
   iw,ih,iHeightLimit: Integer;
 begin
+  FPainting.PPIWindows:=Screen.PixelsPerInch;
+  FPainting.ScaleFactorMacOS:=Self.GetCanvasScaleFactor;
+  FPainting.ScalingForMSWindows:=FPainting.PPIWindows/96;
   if Assigned(FImages) then begin
-    FPainting.PPIWindows:=Screen.PixelsPerInch;
-    FPainting.ScaleFactorMacOS:=Self.GetCanvasScaleFactor;
-    FPainting.ScalingForMSWindows:=FPainting.PPIWindows/96;
     dFactor:=FPainting.ScaleFactorMacOS;
     if dFactor=1 then dFactor:=FPainting.ScalingForMSWindows;
     dAspectRatio:=FImages.Width/FImages.Height;
