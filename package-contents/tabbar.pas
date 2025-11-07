@@ -73,6 +73,7 @@ type
 
   TTabBar = class(TCustomControl)
   private
+    FBorder: Boolean;
     FDisplay: TTabBarDisplay;
     FImageWidth: Integer;
     FStyle: TTabBarStyle;
@@ -105,6 +106,7 @@ type
     procedure SanitiseDisplayMode;
     procedure SanitiseIconWidth;
     procedure SelectALowerTab;
+    procedure SetBorder(AValue: Boolean);
     procedure SetDisplay(AValue: TTabBarDisplay);
     procedure SetImages(AValue: TCustomImageList);
     procedure SetImageWidth(AValue: Integer);
@@ -132,6 +134,7 @@ type
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
+    property Border: Boolean read FBorder write SetBorder;
     property Display: TTabBarDisplay read FDisplay write SetDisplay;
     property ImageWidth: Integer read FImageWidth write SetImageWidth;
     property Style: TTabBarStyle read FStyle write SetStyle;
@@ -236,6 +239,7 @@ begin
   Height:=25;
   FTabWidth:=60;
   FTabMinWidth:=32;
+  FBorder:=True;
   FStyle:=TTabBarStyle.tbsRectangle;
   FTabCurve:=5;
   FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
@@ -282,6 +286,8 @@ begin
   CalcScaling;
   Canvas.Brush.Color:=FPalette.BarBackground;
   Canvas.Pen.Color:=FPalette.BarBorder;
+  if FBorder then Canvas.Pen.Color:=FPalette.BarBorder
+             else Canvas.Pen.Color:=FPalette.BarBackground;
   case FStyle of
     TTabBarStyle.tbsRectangle: FTabCurve:=0;
     TTabBarStyle.tbsSoftRect: FTabCurve:=Min(Height,
@@ -599,6 +605,13 @@ begin
       end;
     end;
   SetTabIndex(i);
+  end;
+
+procedure TTabBar.SetBorder(AValue: Boolean);
+begin
+  if FBorder=AValue then Exit;
+  FBorder:=AValue;
+  Invalidate;
   end;
 
 { Setter for Display.  Display caption, icons or both. }
