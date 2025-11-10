@@ -30,6 +30,7 @@ object Form1: TForm1
       Display = tbdCaptionAndIcon
       ImageWidth = 24
       Style = tbsRounded
+      AccentColor = tbaBright
       Tabs.Strings = (
         'One'
         'Two'
