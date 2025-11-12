@@ -183,10 +183,19 @@ begin
   end;
 
 procedure TForm1.btnAddNewTabClick(Sender: TObject);
+var
+  i,j: Integer;
+  sCaption: String;
 begin
-  TabBar1.Tabs.Add('New Tab');
+  i:=TabBar1.TabIndex+1;
+  j:=1;
+  repeat
+    sCaption:='Tab '+IntToStr(j);
+    Inc(j);
+    until TabBar1.Tabs.IndexOf(sCaption)<0;
+  TabBar1.Tabs.Insert(i,sCaption);
   RefreshTabList;
-  TabBar1.TabIndex:=MaxInt;
+  TabBar1.TabIndex:=i;
   end;
 
 procedure TForm1.cbxAccentChange(Sender: TObject);

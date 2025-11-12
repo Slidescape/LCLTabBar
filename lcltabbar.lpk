@@ -13,7 +13,7 @@
     </CompilerOptions>
     <Description Value="LCL TabBar Visual Control.  Tab like header, picker and context-switcher.  Similar behaviour to a Page Control but without the pages."/>
     <License Value="See the files in the License folder for license details."/>
-    <Version Major="1"/>
+    <Version Major="1" Minor="1"/>
     <Files>
       <Item>
         <Filename Value="package-contents/tabbar.pas"/>

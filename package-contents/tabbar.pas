@@ -39,6 +39,19 @@ type
     end;
   TTabArray = array of TTabData;
 
+  { TTabList}
+
+  TTabList = class(TStringlist)
+  private
+    FTabData: TTabArray;
+    function NewTabData(S: String):TTabData;
+  protected
+    procedure InsertItem(Index: Integer; const S: string; O: TObject); override;
+  public
+    property Data: TTabArray read FTabData;
+    procedure Delete(Index: Integer); override;
+    end;
+
   TTabPalette = record
     BarBackground: TColor;
     BarBorder: TColor;
@@ -84,7 +97,6 @@ type
     FTabWidth: Double;
     FTabMinWidth: Integer;
     FTabCurve: Integer;
-    FTabData: TTabArray;
     FPalette: TTabPalette;
     FPainting: TPainting;
     FTabPainting: TTabPainting;
@@ -230,6 +242,27 @@ begin
     end;
   end;
 
+{ TTabList }
+
+function TTabList.NewTabData(S: String):TTabData;
+begin
+  Result.Caption:=S;
+  Result.Enabled:=True;
+  //Result.ImageIndex:=-1;
+  end;
+
+procedure TTabList.InsertItem(Index: Integer; const S: string; O: TObject);
+begin
+  inherited InsertItem(Index, S, O);
+  System.Insert(NewTabData(S),FTabData,Index);
+  end;
+
+procedure TTabList.Delete(Index: Integer);
+begin
+  System.Delete(FTabData,Index,1);
+  inherited Delete(Index);
+  end;
+
 { TTabBar }
 
 constructor TTabBar.Create(AOwner: TComponent);
@@ -244,9 +277,8 @@ begin
   FTabCurve:=5;
   FDisplay:=TTabBarDisplay.tbdCaptionAndIcon;
   FImageWidth:=16;
-  FTabs:=TStringlist.Create;
+  FTabs:=TTablist.Create;
   AttachObserver(FTabs);
-  //if FTabs.CommaText='' then FTabs.CommaText:='One,Two,Three';
   TabIndex:=-1;
   Canvas.AntialiasingMode:=TAntialiasingMode.amOn;
   end;
@@ -309,8 +341,8 @@ begin
   x:=0;
   for f:=0 to TabCount-1 do begin
     FTabPainting.Index:=f;
-    FTabPainting.Caption:=FTabData[f].Caption;
-    FTabPainting.Enabled:=FTabData[f].Enabled;
+    FTabPainting.Caption:=TTabList(FTabs).FTabData[f].Caption;
+    FTabPainting.Enabled:=TTabList(FTabs).FTabData[f].Enabled;
     FPainting.em:=Canvas.TextWidth('m');
     SanitiseDisplayMode;
     CalcTabArea(RoundToNearest(x));
@@ -567,19 +599,13 @@ begin
   end;
 
 { The observer attached to FTabs has reported a change in the caption strings,
-  so we update our tab data and repaint. }
+  so we size our tab data array, adjust TabIndex if necessary, and repaint. }
 procedure TTabBar.TextChangeObserved;
-var
-  OldCount,f: Integer;
 begin
-  OldCount:=FTabCount;
   FTabCount:=Tabs.Count;
-  if TabIndex>=FTabCount then SelectALowerTab;
-  SetLength(FTabData,TabCount);
-  for f:=0 to TabCount-1 do begin
-    FTabData[f].Caption:=FTabs[f];
-    if f>=OldCount then FTabData[f].Enabled:=True;
-    end;
+  SetLength(TTabList(FTabs).FTabData,FTabCount);
+  if (TabIndex>=FTabCount) or (not TTabList(FTabs).FTabData[TabIndex].Enabled)
+    then SelectALowerTab;
   Invalidate;
   end;
 
@@ -598,7 +624,7 @@ var
   f,i: Integer;
 begin
   i:=-1;
-  for f:=FTabCount-1 downto 0 do begin
+  for f:=FTabIndex-1 downto 0 do begin
     if TabIsEnabled(f) then begin
       i:=f;
       Break;
@@ -606,6 +632,8 @@ begin
     end;
   SetTabIndex(i);
   end;
+
+{ Setter for Border.  Display control with a border, or borderless. }
 
 procedure TTabBar.SetBorder(AValue: Boolean);
 begin
@@ -675,10 +703,10 @@ begin
 function TTabBar.TabIsEnabled(Index: Integer): Boolean;
 begin
   if Index=-1 then Result:=False else begin
-    if (Index<-1) or (Index>Length(FTabData)-1) then
-    raise Exception.Create(Self.Name+': Index('+IntToStr(Index)+' of '
-      +IntToStr(Length(FTabData))+') out of range.');
-    Result:=FTabData[Index].Enabled;
+    if (Index<-1) or (Index>Length(TTabList(FTabs).FTabData)-1) then
+    raise Exception.Create(Self.Name+': Index('+IntToStr(Index)+' of Count '
+      +IntToStr(Length(TTabList(FTabs).FTabData))+') out of range.');
+    Result:=TTabList(FTabs).FTabData[Index].Enabled;
     end;
   end;
 
@@ -698,7 +726,7 @@ begin
 procedure TTabBar.SetTabEnabled(Index: Integer; AValue: Boolean);
 begin
   if (Index<0) or (TabIsEnabled(Index)=AValue) then Exit;
-  FTabData[Index].Enabled:=AValue;
+  TTabList(FTabs).FTabData[Index].Enabled:=AValue;
   Invalidate;
   end;
 
@@ -730,7 +758,8 @@ begin
   if TabCount>0 then begin
     tw:=Max(Width,FPainting.TabMinWidth*TabCount);
     i:=RoundToNearest((X*TabCount)/tw)-1;
-    if (i>-1) and (i<TabCount) and (FTabData[i].Enabled) then TabIndex:=i;
+    if (i>-1) and (i<TabCount) and (TTabList(FTabs).FTabData[i].Enabled)
+      then TabIndex:=i;
     end;
   end;
 

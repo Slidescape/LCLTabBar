@@ -27,6 +27,7 @@ object Form1: TForm1
       Height = 32
       Top = 0
       Width = 582
+      Border = True
       Display = tbdCaptionAndIcon
       ImageWidth = 24
       Style = tbsRounded
