@@ -34,8 +34,8 @@ type
   TTabData = record
     Caption: String;
     Enabled: Boolean;
+    IconIndex: Integer;
     //Icon: TBitmap;
-    //IconIndex: Integer;
     end;
   TTabArray = array of TTabData;
 
@@ -143,6 +143,9 @@ type
     destructor Destroy; override;
     procedure SetTabEnabled(Index: Integer; AValue: Boolean); overload;
     function TabIsEnabled(Index: Integer): Boolean;
+    procedure SetIconIndexForTab(AIndex, AIconIndex: Integer);
+    function IconIndexForTab(AIndex: Integer): Integer;
+    function IconIndexResolvedForTab(AIndex: Integer): Integer;
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
@@ -248,7 +251,7 @@ function TTabList.NewTabData(S: String):TTabData;
 begin
   Result.Caption:=S;
   Result.Enabled:=True;
-  //Result.ImageIndex:=-1;
+  Result.IconIndex:=-1;
   end;
 
 procedure TTabList.InsertItem(Index: Integer; const S: string; O: TObject);
@@ -419,11 +422,17 @@ begin
   We measure text width to calculate the desired icon x position (offset).  The
   caption rendering area's left-edge is then shifted by the width of the icon. }
 procedure TTabBar.PaintIcon;
+var
+  iTabIndex,iIconIndex: Integer;
 begin
-  if (not Assigned(FImages)) or (FTabPainting.Index>=FImages.Count) then Exit;
+  if not Assigned(FImages) then Exit;
+  iTabIndex:=FTabPainting.Index;
+  iIconIndex:=IconIndexResolvedForTab(iTabIndex);
+  if iIconIndex<0 then iIconIndex:=iTabIndex;
+  if iIconIndex>=FImages.Count then Exit;
   SanitiseIconWidth;
   CalcTabLayout;
-  DrawScaledIcon(FTabPainting.Index);
+  DrawScaledIcon(iIconIndex);
   end;
 
 { Paint the icon into the tab at the correct scale. }
@@ -499,7 +508,8 @@ procedure TTabBar.SanitiseDisplayMode;
 begin
   FPainting.DisplayMode:=Display;
   if Display=TTabBarDisplay.tbdCaption then Exit;
-  if (Assigned(FImages)) and (FImages.Count>FTabPainting.Index) then begin
+  if (Assigned(FImages))
+  and (FImages.Count>IconIndexResolvedForTab(FTabPainting.Index)) then begin
     if FTabPainting.Caption=''
       then FPainting.DisplayMode:=TTabBarDisplay.tbdIcon
       else FPainting.DisplayMode:=Display;
@@ -711,6 +721,33 @@ begin
       +IntToStr(Length(TTabList(FTabs).FTabData))+') out of range.');
     Result:=TTabList(FTabs).FTabData[Index].Enabled;
     end;
+  end;
+
+procedure TTabBar.SetIconIndexForTab(AIndex, AIconIndex: Integer);
+var
+  i: Integer;
+begin
+  i:=IconIndexForTab(AIndex);
+  if i=AIconIndex then Exit;
+  TTabList(FTabs).FTabData[AIndex].IconIndex:=AIconIndex;
+  Invalidate;
+  end;
+
+{ Returns the explicit icon index for the specific tab, or -1 if no explicit
+  icon index assigned. -1 indicates the default auto icon index applies. }
+function TTabBar.IconIndexForTab(AIndex: Integer): Integer;
+begin
+  if (AIndex<0) or (AIndex>=TabCount)
+    then raise Exception.Create('Index out of range: '+IntToStr(AIndex));
+  Result:=TTabList(FTabs).FTabData[AIndex].IconIndex;
+  end;
+
+{ Same as IconIndexForTab, except if no explicit icon index assigned (i.e. -1)
+  then it resolves the actual default auto icon index i.e. matches tab index. }
+function TTabBar.IconIndexResolvedForTab(AIndex: Integer): Integer;
+begin
+  Result:=IconIndexForTab(AIndex);
+  if Result<0 then Result:=AIndex; //Default icon index equals index of the tab.
   end;
 
 { Getter for TabEnabled property. Returns True if the current tab is Enabled. }
