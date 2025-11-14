@@ -601,9 +601,12 @@ begin
 { The observer attached to FTabs has reported a change in the caption strings,
   so we size our tab data array, adjust TabIndex if necessary, and repaint. }
 procedure TTabBar.TextChangeObserved;
+var
+  i: Integer;
 begin
   FTabCount:=Tabs.Count;
   SetLength(TTabList(FTabs).FTabData,FTabCount);
+  for i:=0 to FTabCount-1 do TTabList(FTabs).FTabData[i].Caption:=FTabs[i];
   if (TabIndex>=FTabCount) or (not TTabList(FTabs).FTabData[TabIndex].Enabled)
     then SelectALowerTab;
   Invalidate;
