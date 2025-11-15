@@ -146,6 +146,7 @@ type
     procedure SetIconIndexForTab(AIndex, AIconIndex: Integer);
     function IconIndexForTab(AIndex: Integer): Integer;
     function IconIndexResolvedForTab(AIndex: Integer): Integer;
+    procedure IconsRevertToDefaultSequence;
     property TabCount: Integer read FTabCount;
     property TabEnabled: Boolean read GetTabEnabled write SetTabEnabled;
   published
@@ -748,6 +749,15 @@ function TTabBar.IconIndexResolvedForTab(AIndex: Integer): Integer;
 begin
   Result:=IconIndexForTab(AIndex);
   if Result<0 then Result:=AIndex; //Default icon index equals index of the tab.
+  end;
+
+{ If explicit icons have been assigned, this resets all tabs back to the default
+  automatic icon sequence i.e. 0 1 2 3 ...etc... }
+procedure TTabBar.IconsRevertToDefaultSequence;
+var
+  i: Integer;
+begin
+  for i:=0 to TabCount-1 do SetIconIndexForTab(i,-1);
   end;
 
 { Getter for TabEnabled property. Returns True if the current tab is Enabled. }
