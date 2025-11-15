@@ -13,7 +13,7 @@
 {$mode ObjFPC}{$H+}
 
 interface uses
-  Classes, SysUtils, LResources, Controls, Math, Graphics, ImgList;
+  Classes, SysUtils, LResources, Controls, Math, Graphics, ImgList, ComCtrls;
 
 type
 
@@ -35,7 +35,6 @@ type
     Caption: String;
     Enabled: Boolean;
     IconIndex: Integer;
-    //Icon: TBitmap;
     end;
   TTabArray = array of TTabData;
 
@@ -101,6 +100,7 @@ type
     FPainting: TPainting;
     FTabPainting: TTabPainting;
     FImages: TCustomImageList;
+    FPageControl: TCustomTabControl;
     FOnSelect: TNotifyEvent;
     procedure AttachObserver(Subject: TPersistent);
     procedure CalcTabLayout;
@@ -122,6 +122,7 @@ type
     procedure SetDisplay(AValue: TTabBarDisplay);
     procedure SetImages(AValue: TCustomImageList);
     procedure SetImageWidth(AValue: Integer);
+    procedure SetPageControl(AValue: TCustomTabControl);
     procedure SetStyle(AValue: TTabBarStyle);
     procedure SetAccent(AValue: TTabBarAccent);
     procedure SetTabEnabled(AValue: Boolean); overload;
@@ -158,6 +159,8 @@ type
     property Tabs: TStrings read FTabs write SetTabCaptions;
     property TabIndex: Integer read FTabIndex write SetTabIndex;
     property Images: TCustomImageList read FImages write SetImages;
+    property PageControl: TCustomTabControl read FPageControl
+                                            write SetPageControl;
     property Align;
     property Anchors;
     property BiDiMode;
@@ -283,6 +286,8 @@ begin
   FImageWidth:=16;
   FTabs:=TTablist.Create;
   AttachObserver(FTabs);
+  FImages:=nil;
+  FPageControl:=nil;
   TabIndex:=-1;
   Canvas.AntialiasingMode:=TAntialiasingMode.amOn;
   end;
@@ -684,6 +689,17 @@ begin
     end;
   end;
 
+{ TabBar can optionally drive page selection in a separate linked PageControl.
+  Essentially acting as its header, but potentially visually separated from it.
+  Typically makes sense when your linked PageControl has its own tabs hidden via
+  its ShowTabs property. See accompanying demo app for a practical example. }
+procedure TTabBar.SetPageControl(AValue: TCustomTabControl);
+begin
+  if FPageControl=AValue then Exit;
+  FPageControl:=AValue;
+  SetTabIndex(FTabIndex); //Sync TabIndex with the PageControl.
+  end;
+
 { Setter for Style property. Sets the display style of the TabBar control,
   e.g. tbsRounded. }
 procedure TTabBar.SetStyle(AValue: TTabBarStyle);
@@ -695,7 +711,6 @@ begin
 
 { Setter for AccentColor property. Sets the accent colour used to highlight
   the currently active tab. }
-
 procedure TTabBar.SetAccent(AValue: TTabBarAccent);
 begin
   if FAccent=AValue then Exit;
@@ -794,6 +809,8 @@ begin
     Invalidate;
     if Assigned(OnSelect) then OnSelect(Self);
     end;
+  if (Assigned(PageControl)) and (PageControl.PageCount>=Value)
+    then PageControl.PageIndex:=Value;
   end;
 
 { The TabBar has been clicked. Determine which tab was clicked and select it.

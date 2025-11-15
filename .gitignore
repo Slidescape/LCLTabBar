@@ -135,5 +135,7 @@ project/unit/
 # This project
 assets/
 unversioned/
-demo/compiled/
-demo/TabBarDemo.res
+demo/demo-1/compiled/
+demo/demo-1/TabBarDemo.res
+demo/demo-2/compiled/
+demo/demo-2/TabBarDemo2.res
