@@ -618,13 +618,16 @@ begin
   so we size our tab data array, adjust TabIndex if necessary, and repaint. }
 procedure TTabBar.TextChangeObserved;
 var
-  i: Integer;
+  i:Integer;
+  bTabIsEnabled:Boolean;
 begin
   FTabCount:=Tabs.Count;
   SetLength(TTabList(FTabs).FTabData,FTabCount);
   for i:=0 to FTabCount-1 do TTabList(FTabs).FTabData[i].Caption:=FTabs[i];
-  if (TabIndex>=FTabCount) or (not TTabList(FTabs).FTabData[TabIndex].Enabled)
-    then SelectALowerTab;
+  if FTabCount>0 then begin
+    bTabIsEnabled:=TTabList(FTabs).FTabData[TabIndex].Enabled;
+    if(TabIndex>=FTabCount) or (not bTabIsEnabled) then SelectALowerTab;
+    end;
   Invalidate;
   end;
 
@@ -643,6 +646,7 @@ var
   f,i: Integer;
 begin
   i:=-1;
+  if FTabIndex>=FTabCount then FTabIndex:=FTabCount-1;
   for f:=FTabIndex-1 downto 0 do begin
     if TabIsEnabled(f) then begin
       i:=f;
