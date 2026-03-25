@@ -296,6 +296,7 @@ destructor TTabBar.Destroy;
 begin
   FreeThenNil(FTabs);
   //Do I need to free the observer here?
+  inherited Destroy;
   end;
 
 { Create and attach an observer to report any changes in specified Subject. }
